@@ -44,6 +44,11 @@ class AletasApp:
 
     def barra_lateral(self):
 
+        self.condicao_escolhida = st.selectbox(label='Condição na extremidade:',
+                                        options=self.condicoes_extremidade)
+
+        st.markdown('___')
+
         self.temperatura_base = st.number_input('Temperatura na base [K]', 
                                                 value=self.retornar_aleatorio(100.0,100),
                                                 step=10.0)
@@ -70,12 +75,12 @@ class AletasApp:
         st.markdown(self.titulo_pagina)
         st.markdown(self.subtitulo)
 
-        self.mostrar_parametros_escolhidos()
+        st.markdown('''Análise do comportamento de diferentes aletas em um aplicativo Python.
+                       Na barra lateral, escolha diferentes **condições na extremidade da aleta** para analisar sua **base teórica**.
+                       Escolha também **diferentes parâmetros** que serão utilizados para o cálculo dos **perfis de temperatura
+                       e taxa de transferência de calor**.''')
 
-        st.markdown('___')
-
-        self.condicao_escolhida = st.selectbox(label='Condição na extremidade:',
-                                        options=self.condicoes_extremidade)
+        
 
         self.trans_conv()
         self.adiabatica()
@@ -91,12 +96,27 @@ class AletasApp:
         elif self.condicao_escolhida == self.condicoes_extremidade[3]:
             self.mostrar_info(self.aleta_infinita_info)
 
+        self.mostrar_parametros_escolhidos()
+
         self.plotar_resultados()
+
+        _ = st.columns(2)
+
+        with _[0]:
+            st.caption('📚 INCROPERA, F.; DEWITT, D.P. Fundamentos de Transferência de Calor e de Massa, 7ed., Rio de Janeiro: LTC, 2014.')
+        with _[1]:
+            st.caption(f'👨🏻‍💻 Código fonte: https://github.com/felp99/aletas_transcal')
 
     def geral(self):
         self.m = np.sqrt(self.h * self.P / self.k * self.area_b)
         self.x = np.linspace(start = 0, stop = self.L, num=100)
         self.M = np.sqrt(self.h * self.P * self.k * self.area_b) * self.temperatura_base
+
+    def eficiencia_calc(self, qa):
+        return qa/(self.h * self.P * self.L * self.temperatura_base)
+
+    def efetividade_calc(self, qa):
+        return qa/(self.h*self.temperatura_base*self.area_b)
 
     def trans_conv(self):
 
@@ -109,15 +129,13 @@ class AletasApp:
 
         theta = (np.cosh(self.m * (self.L-self.x)) + ((self.h/(self.m*self.k)) * np.sinh(self.m*(self.L-self.x))))/(np.cosh(self.m * self.L) + ((self.h/(self.m*self.k)) * np.sinh(self.m*self.L)))
         qa =  self.M * ((np.sinh(self.m*self.L)+((self.h/(self.m*self.k))* np.cosh(self.m * self.L)))/(np.cosh(self.m*self.L)+((self.h/(self.m*self.k))* np.sinh(self.m * self.L))))
-        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
-        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
         
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[0]
-        context['eficiencia'] = eficiencia
-        context['efetividade'] = efetividade
+        context['eficiencia'] = self.eficiencia_calc(qa)
+        context['efetividade'] = self.efetividade_calc(qa)
         self.trans_conv_resultado =  context
 
     def adiabatica(self):
@@ -130,15 +148,13 @@ class AletasApp:
 
         theta = np.cosh(self.m * (self.L-self.x))/np.cosh(self.m*self.L)
         qa =  self.M * np.tanh(self.m*self.L)
-        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
-        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
 
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[1]
-        context['eficiencia'] = eficiencia
-        context['efetividade'] = efetividade
+        context['eficiencia'] = self.eficiencia_calc(qa)
+        context['efetividade'] = self.efetividade_calc(qa)
         self.adiabatica_resultado = context
 
     def temperatura_prescrita(self):
@@ -151,15 +167,13 @@ class AletasApp:
 
         theta = ((self.temperatura_prescrita_escolhida/self.temperatura_base)*np.sinh(self.m*self.x)) + np.sinh(self.m*(self.L-self.x))/np.sinh(self.m*self.L)
         qa =  self.M * (np.cosh(self.m*self.L)-(self.temperatura_prescrita_escolhida/self.temperatura_base))/np.sinh(self.m*self.L)
-        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
-        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
 
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[2]
-        context['eficiencia'] = eficiencia
-        context['efetividade'] = efetividade
+        context['eficiencia'] = self.eficiencia_calc(qa)
+        context['efetividade'] = self.efetividade_calc(qa)
         self.temperatura_prescrita_resultado = context
 
 
@@ -172,15 +186,13 @@ class AletasApp:
             }
         theta = np.exp(-self.m * self.x)
         qa =  self.M
-        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
-        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
 
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[3]
-        context['eficiencia'] = eficiencia
-        context['efetividade'] = efetividade
+        context['eficiencia'] = self.eficiencia_calc(qa)
+        context['efetividade'] = self.efetividade_calc(qa)
         self.aleta_infinita_resultado = context
 
     def plotar_resultados(self):
@@ -201,14 +213,9 @@ class AletasApp:
             theta = dicionario_resultados[condicao]['theta']
             qa = dicionario_resultados[condicao]['qa']
             eficiencia = dicionario_resultados[condicao]['eficiencia']
-            efetividade = dicionario_resultados[condicao]['efetividade']
-            temperatura_extremidade = theta[-1] * self.temperatura_base
 
-            
             df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa,2)} W'
             df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Temperatura Extremidade'] = f'{round(temperatura_extremidade,2)}K'
         st.table(df)
 
         fig = go.Figure()
@@ -218,7 +225,7 @@ class AletasApp:
             fig.add_trace(go.Line(
                 x = self.x,
                 y = theta * self.temperatura_base,
-                name=dicionario_resultados[condicao]['titulo']
+                name=dicionario_resultados[condicao]['titulo'],
             ))
             
         fig.update_layout(
@@ -227,10 +234,10 @@ class AletasApp:
             autosize=True,
             yaxis_title="θ [K]",
             xaxis_title="L [m]",
-            legend_title="Condição na extremidade:")    
+            legend_title="Condição na extremidade:", 
+            hovermode=f"x")    
 
-        st.plotly_chart(fig)
-        
+        st.plotly_chart(fig)        
 
     def mostrar_parametros_escolhidos(self):
         _cols = st.columns(4)
