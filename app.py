@@ -1,106 +1,224 @@
+from random import random
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
 
-dic = {
-    'titulo_pagina':'# 🔩 Estudo sobre Aletas',
-    'subtitulo': '##### Transferência de calor', 
-    'condicoes_titulo':'Condição na extremidade:', 
-    'condicoes_extremidade': ['Transferência por Convecção', 
-                              'Adiabática', 
-                              'Temperatura prescrita', 
-                              'Aleta infinita'], 
-    'condicao_escolhida': None,
-    'forma_titulo': 'Forma da aleta:',
-    'forma': ['Retangular', 'Pino'], 
-    'forma_escolhida': None,
-    'temperatura_base': None,
-    'tamanho': None,
-    'k':None,
-    'h': None, 
-    'perimetro': None,
-    'area_c':None,
-}
+#Salvando o pipreqs: >pipreqs --encoding=utf8 .
 
-st.markdown(dic['titulo_pagina'])
-st.markdown(dic['subtitulo'])
+st.set_page_config(
+     page_title="AletasApp",
+     page_icon="🔩",
+     layout="wide",
+     initial_sidebar_state="expanded",
+ )
+
+RANDOM = False
+class AletasApp:
+    def __init__(self) -> None:
+        self.utils()
+        
+        with st.sidebar:
+            self.barra_lateral()
+
+        self.geral()
+        self.conteudo()
+
+    def utils(self):
+        self.componentes = {}
+        self.titulo_pagina = '# 🔩 Estudo sobre Aletas'
+        self.subtitulo = '##### Transferência de calor'
+        self.condicoes_extremidade = ['Transferência por Convecção',
+                                      'Adiabática', 
+                                      'Temperatura prescrita', 
+                                      'Aleta infinita']
+        self.template_contexto = {
+            'theta':None,
+            'qa':None,
+        }
+
+        self.formulas_origem = [r'''m^2\equiv\frac{hP}{kA_c},''', 
+                                r'''M\equiv\sqrt{hPkA_c\theta_b},''',
+                                r'''\theta\equiv T-T_\infty,''',
+                                r'''\theta_b=\theta(0)=T_b-T_\infty''']
+
+    def barra_lateral(self):
+        self.condicao_escolhida = st.selectbox(label='Condição na extremidade:',
+                                               options=self.condicoes_extremidade)
+
+        st.markdown('___')
+
+        self.temperatura_base = st.number_input('Temperatura na base [K]', 
+                                                value=self.retornar_aleatorio(100.0,100),
+                                                step=10.0)
+        self.temperatura_prescrita_escolhida = st.number_input(label='Temperatura prescrita [K]', 
+                                                                value=self.retornar_aleatorio(100.0,100),
+                                                                step=.01)
+        self.L = st.number_input(label='Tamanho da aleta [m]', 
+                                       value=self.retornar_aleatorio(1.0,1),
+                                       step=.01)
+        self.k = st.number_input(label='Coef. condução [W/mK]', 
+                                 value = self.retornar_aleatorio(100.0,1000),
+                                 step=10.)
+        self.h = st.number_input(label='Coef. convecção [W/m²K]', 
+                                 value = self.retornar_aleatorio(100.0,1000),
+                                 step=10.)
+        self.P =  st.number_input(label='Perímetro [m]', 
+                                  value = self.retornar_aleatorio(0.5,1),
+                                  step=.1)
+        self.area_b = st.number_input(label='Área da base [m²]', 
+                                      value= self.retornar_aleatorio(0.5,1),
+                                      step=.1)
+
+    def conteudo(self):
+        st.markdown(self.titulo_pagina)
+        st.markdown(self.subtitulo)
+        self.mostrar_parametros_escolhidos()
+
+        self.trans_conv()
+        self.adiabatica()
+        self.temperatura_prescrita()
+        self.aleta_infinita()
+
+        if self.condicao_escolhida == self.condicoes_extremidade[0]:
+            self.mostrar_info(self.trans_conv_info)
+        elif self.condicao_escolhida == self.condicoes_extremidade[1]:
+            self.mostrar_info(self.adiabatica_info)
+        elif self.condicao_escolhida == self.condicoes_extremidade[2]:
+            self.mostrar_info(self.temperatura_prescrita_info)
+        elif self.condicao_escolhida == self.condicoes_extremidade[3]:
+            self.mostrar_info(self.aleta_infinita_info)
+
+        self.plotar_resultados_grafico()
+
+    def geral(self):
+        self.m = np.sqrt(self.h * self.P / self.k * self.area_b)
+        self.x = np.linspace(start = 0, stop = self.L, num=100)
+        self.M = np.sqrt(self.h * self.P * self.k * self.area_b) * self.temperatura_base
+
+    def trans_conv(self):
+
+        self.trans_conv_info = {
+                'Na extremidade:': r'''h\theta\left(L\right)=-\left(\frac{kd\theta}{dx}\right)_{x=L}''',
+                'Distribuição da temperatura:': r'''\frac{\theta}{\theta_b}=\frac{cosh\ m(L-x)\ +\ (\frac{h}{mk})\ sinh\ m(L-x)\ }{cosh\ mL\ +\ (\frac{h}{mk})\ sinh\ mL\ }''',
+                'Taxa de transferência de calor na aleta:': r'''q_a=\ M\frac{sinh\ mL+\left(\frac{h}{mk}\right)\ cosh\ mL}{cosh\ mL+\left(\frac{h}{mk}\right)\ sinh\ mL}''',
+            }
 
 
-_cols = st.columns(2)
-with _cols[0]:
-    dic['forma_escolhida'] = st.selectbox(dic['forma_titulo'], dic['forma'])
-with _cols[1]:
-    dic['condicao_escolhida'] = st.selectbox(dic['condicoes_titulo'], dic['condicoes_extremidade'])
+        theta = (np.cosh(self.m * (self.L-self.x)) + ((self.h/(self.m*self.k)) * np.sinh(self.m*(self.L-self.x))))/(np.cosh(self.m * self.L) + ((self.h/(self.m*self.k)) * np.sinh(self.m*self.L)))
+        qa =  self.M * ((np.sinh(self.m*self.L)+((self.h/(self.m*self.k))* np.cosh(self.m * self.L)))/(np.cosh(self.m*self.L)+((self.h/(self.m*self.k))* np.sinh(self.m * self.L))))
+        context = {}
+        context['theta'] = theta
+        context['qa']  = qa
+        context['titulo'] = self.condicoes_extremidade[0]
+        self.trans_conv_resultado =  context
 
-with st.sidebar:
+    def adiabatica(self):
 
-    dic['temperatura_base'] = st.number_input('Temperatura na base [K]', 100.0, step=10.0)
-    dic['tamanho'] = st.number_input('Tamanho da aleta [m]', 1.0, step=.1)
-    dic['k'] = st.number_input('Coef. condução [W/m²K]', 100.0, step=.1)
-    dic['h'] = st.number_input('Coef. convecção [W/m²K]',value=177.0, step=.1)
-    dic['perimetro'] =  st.number_input('Perímetro [m]', .50, step=.1)
-    dic['area_c'] = st.number_input('Área circunferência [m²]', .50, step=.1)
+        self.adiabatica_info = {
+                'Na extremidade:': r'''-\left(\frac{kd\theta}{dx}\right)_{x=L}=0''',
+                'Distribuição da temperatura:': r'''\frac{\theta}{\theta_b}=\frac{cosh\ m\left(L-x\right)\ \ }{L}''',
+                'Taxa de transferência de calor na aleta:': r'''q_a=M\ tanh\ (mL)''',
+            }
+
+        theta = np.cosh(self.m * (self.L-self.x))/np.cosh(self.m*self.L)
+        qa =  self.M * np.tanh(self.m*self.L)
+        context = {}
+        context['theta'] = theta
+        context['qa']  = qa
+        context['titulo'] = self.condicoes_extremidade[1]
+        self.adiabatica_resultado = context
+
+    def temperatura_prescrita(self):
+
+        self.temperatura_prescrita_info = {
+                'Na extremidade:': r'''\theta_L=\theta\left(L\right)''' + rf'''= {round(self.temperatura_prescrita_escolhida, 2)} K''',
+                'Distribuição da temperatura:': r'''\frac{\theta}{\theta_b}=\frac{\left(\frac{\theta_L}{\theta_b}\right)sinh\ (mx)\ +\ sinh\ m(L-x)}{sinh\ (mL)}''',
+                'Taxa de transferência de calor na aleta:': r'''q_a=M\frac{\left(cosh\ mL\ -\ \frac{\theta_L}{\theta_b}\right)}{sinh\ mL}''',
+            }
+
+        theta = ((self.temperatura_prescrita_escolhida/self.temperatura_base)*np.sinh(self.m*self.x)) + np.sinh(self.m*(self.L-self.x))/np.sinh(self.m*self.L)
+        qa =  self.M * (np.cosh(self.m*self.L)-(self.temperatura_prescrita_escolhida/self.temperatura_base))/np.sinh(self.m*self.L)
+        context = {}
+        context['theta'] = theta
+        context['qa']  = qa
+        context['titulo'] = self.condicoes_extremidade[2]
+        self.temperatura_prescrita_resultado = context
 
 
+    def aleta_infinita(self):
+        
+        self.aleta_infinita_info = {
+                'Na extremidade:': r'''\left(L\rightarrow \infty\right):\ \theta(L)=0''',
+                'Distribuição da temperatura:': r'''\frac{\theta}{\theta_b}=e^{-mx}''',
+                'Taxa de transferência de calor na aleta:': r'''q_a=M''',
+            }
+        theta = np.exp(-self.m * self.x)
+        qa =  self.M 
+        context = {}
+        context['theta'] = theta
+        context['qa']  = qa
+        context['titulo'] = self.condicoes_extremidade[3]
+        self.aleta_infinita_resultado = context
 
+    def plotar_resultados_grafico(self):
 
-st.markdown('___')
+        dicionario_resultados = {
+            'trans_conv':self.trans_conv_resultado,
+            'adiabatica':self.adiabatica_resultado,
+            'temperatura_prescrita':self.temperatura_prescrita_resultado,
+            'aleta_infinita':self.aleta_infinita_resultado,
+        }
 
-if dic['condicao_escolhida'] == dic['condicoes_extremidade'][0]:
+        fig = go.Figure()
 
-    st.markdown('Na extremidade:')
-    st.latex(r'''
-        h\theta(L)=\left.\ -kd\theta/dx\right|_{x=L}
-        ''' )
+        for condicao in dicionario_resultados:
+            theta = dicionario_resultados[condicao]['theta']
 
-    st.markdown('Sendo:')
-    _cols = st.columns(4)
-    with _cols[0]:
-        st.latex(r'''
-        m^2\equiv\frac{hP}{kA_c}
-        ''')
-    with _cols[1]:
-        st.latex(r'''
-        M\equiv\sqrt{hPkA_c\theta_b}
-        ''')
-    with _cols[2]:
-        st.latex(r'''
-        \theta\equiv T-T_\infty
-        ''')
-    with _cols[3]:
-        st.latex(r'''
-        \theta_b=\theta(0)=T_b-T_\infty
-        ''')
+            fig.add_trace(go.Line(
+                x = self.x,
+                y = theta * self.temperatura_base,
+                name=dicionario_resultados[condicao]['titulo']
+            ))
 
-    st.markdown('Distribuição da temperatura:')
-    st.latex(r'''
-            \frac{\theta}{\theta_b}=\frac{cosh\ m(L-x)\ +\ (\frac{h}{mk})\ sinh\ m(L-x)\ }{cosh\ mL\ +\ (\frac{h}{mk})\ sinh\ mL\ }
-            ''')
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                autosize=True)
+        
+        st.plotly_chart(fig)
 
-    st.markdown('Taxa de transferência de calor na aleta:')
-    st.latex(r'''
-            q_a=\ M\frac{sinh\ mL+\left(\frac{h}{mk}\right)\ cosh\ mL}{cosh\ mL+\left(\frac{h}{mk}\right)\ sinh\ mL} 
-            ''')
+    def mostrar_parametros_escolhidos(self):
+        _cols = st.columns(4)
+        with _cols[0]:
+            st.latex(r'''\theta_b='''+ rf'''{round(self.temperatura_base, 2)} K''')
+        with _cols[1]:
+            st.latex(r'''L='''+ rf'''{round(self.L, 2)} m''')
+        with _cols[2]:
+            st.latex(r'''k='''+ rf'''{round(self.k, 2)} '''+ r'''\frac{h}{mk}''')
+        with _cols[3]:
+            st.latex(r'''h='''+ rf'''{round(self.h, 2)} '''+ r'''\frac{h}{m^2k}''')
 
-_cols = st.columns(3)
-with _cols[0]:
-    t = dic['temperatura_base']
-    st.latex(r'''\theta_b='''+ rf'''{t} K''')
-with _cols[1]:
-    tam = dic['tamanho']
-    st.latex(r'''L='''+ rf'''{tam} m''')
+        _cols = st.columns(2)
+        with _cols[0]:
+            st.latex(r'''P='''+ rf'''{round(self.P,2)} m''')
+        with _cols[1]:
+            st.latex(r'''A_b='''+ rf'''{round(self.area_b,2)} m^2''')
 
-# ''' CÁLCULO SEGUINDO AS FÓRMULAS ACIMA:'''
+    def mostrar_info(self, infos):
+        with st.expander(f'📝 Base teórica: {self.condicao_escolhida}', expanded=False):
 
-m = dic['m'] = np.sqrt(dic['h'] * dic['perimetro'] / dic['k'] * dic['area_c'])
-L = dic['tamanho']
-h = dic['h']
-k = dic['k']
+            st.markdown('Sendo:')
+            _c = st.columns(len(self.formulas_origem))
+            for nc, c in enumerate(_c):
+                with c:
+                    st.latex(self.formulas_origem[nc])
 
-x = np.linspace(0, L, num=100)
+            for info in infos:
+                st.markdown(info)
+                st.latex(infos[info])
 
-theta = (np.cosh(m * (L-x)) + ((h/(m*k)) * np.sinh(m*(L-x))))/(np.cosh(m * L) + ((h/(m*k)) * np.sinh(m*L)))
+    def retornar_aleatorio(self, default, multiplicador_random):
+        return default if not RANDOM else random() * multiplicador_random
 
-st.plotly_chart(px.line(theta))
+AletasApp()
