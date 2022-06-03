@@ -6,7 +6,7 @@ Análise do comportamento de diferentes aletas em um aplicativo Python.
 
 ## Rodando localmente (<i>cmd</i> ou outro):
 
-### Assumindo que você tem Python e Git instalado.
+### Assumindo que você tem [Python](https://www.python.org/downloads/) e [Git](https://git-scm.com/) instalado.
 
 Clone o repositório:
 > git clone https://github.com/felp99/aletas_transcal.git
