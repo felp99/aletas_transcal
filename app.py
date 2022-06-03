@@ -1,4 +1,5 @@
 from random import random
+from turtle import width
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -43,10 +44,6 @@ class AletasApp:
                                 r'''\theta_b=\theta(0)=T_b-T_\infty''']
 
     def barra_lateral(self):
-        self.condicao_escolhida = st.selectbox(label='Condição na extremidade:',
-                                               options=self.condicoes_extremidade)
-
-        st.markdown('___')
 
         self.temperatura_base = st.number_input('Temperatura na base [K]', 
                                                 value=self.retornar_aleatorio(100.0,100),
@@ -73,7 +70,13 @@ class AletasApp:
     def conteudo(self):
         st.markdown(self.titulo_pagina)
         st.markdown(self.subtitulo)
+
         self.mostrar_parametros_escolhidos()
+
+        st.markdown('___')
+
+        self.condicao_escolhida = st.selectbox(label='Condição na extremidade:',
+                                        options=self.condicoes_extremidade)
 
         self.trans_conv()
         self.adiabatica()
@@ -89,7 +92,7 @@ class AletasApp:
         elif self.condicao_escolhida == self.condicoes_extremidade[3]:
             self.mostrar_info(self.aleta_infinita_info)
 
-        self.plotar_resultados_grafico()
+        self.plotar_resultados()
 
     def geral(self):
         self.m = np.sqrt(self.h * self.P / self.k * self.area_b)
@@ -107,10 +110,15 @@ class AletasApp:
 
         theta = (np.cosh(self.m * (self.L-self.x)) + ((self.h/(self.m*self.k)) * np.sinh(self.m*(self.L-self.x))))/(np.cosh(self.m * self.L) + ((self.h/(self.m*self.k)) * np.sinh(self.m*self.L)))
         qa =  self.M * ((np.sinh(self.m*self.L)+((self.h/(self.m*self.k))* np.cosh(self.m * self.L)))/(np.cosh(self.m*self.L)+((self.h/(self.m*self.k))* np.sinh(self.m * self.L))))
+        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
+        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
+        
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[0]
+        context['eficiencia'] = eficiencia
+        context['efetividade'] = efetividade
         self.trans_conv_resultado =  context
 
     def adiabatica(self):
@@ -123,10 +131,15 @@ class AletasApp:
 
         theta = np.cosh(self.m * (self.L-self.x))/np.cosh(self.m*self.L)
         qa =  self.M * np.tanh(self.m*self.L)
+        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
+        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
+
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[1]
+        context['eficiencia'] = eficiencia
+        context['efetividade'] = efetividade
         self.adiabatica_resultado = context
 
     def temperatura_prescrita(self):
@@ -139,10 +152,15 @@ class AletasApp:
 
         theta = ((self.temperatura_prescrita_escolhida/self.temperatura_base)*np.sinh(self.m*self.x)) + np.sinh(self.m*(self.L-self.x))/np.sinh(self.m*self.L)
         qa =  self.M * (np.cosh(self.m*self.L)-(self.temperatura_prescrita_escolhida/self.temperatura_base))/np.sinh(self.m*self.L)
+        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
+        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
+
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[2]
+        context['eficiencia'] = eficiencia
+        context['efetividade'] = efetividade
         self.temperatura_prescrita_resultado = context
 
 
@@ -154,14 +172,19 @@ class AletasApp:
                 'Taxa de transferência de calor na aleta:': r'''q_a=M''',
             }
         theta = np.exp(-self.m * self.x)
-        qa =  self.M 
+        qa =  self.M
+        eficiencia = qa / (self.h * self.P * self.L * self.temperatura_base)
+        efetividade = qa/(self.h*self.temperatura_base*self.area_b)
+
         context = {}
         context['theta'] = theta
         context['qa']  = qa
         context['titulo'] = self.condicoes_extremidade[3]
+        context['eficiencia'] = eficiencia
+        context['efetividade'] = efetividade
         self.aleta_infinita_resultado = context
 
-    def plotar_resultados_grafico(self):
+    def plotar_resultados(self):
 
         dicionario_resultados = {
             'trans_conv':self.trans_conv_resultado,
@@ -170,23 +193,45 @@ class AletasApp:
             'aleta_infinita':self.aleta_infinita_resultado,
         }
 
-        fig = go.Figure()
-
-        for condicao in dicionario_resultados:
+        df = pd.DataFrame()
+        
+        st.markdown('### Resultados:')
+        st.markdown('##### Comparação dos resultados:')
+        _colunas_metricas = st.columns(4)
+        for ncondicao, condicao in enumerate(dicionario_resultados):
             theta = dicionario_resultados[condicao]['theta']
+            qa = dicionario_resultados[condicao]['qa']
+            eficiencia = dicionario_resultados[condicao]['eficiencia']
+            efetividade = dicionario_resultados[condicao]['efetividade']
+            temperatura_extremidade = theta[-1] * self.temperatura_base
 
+            
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa,2)} W'
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Temperatura Extremidade'] = f'{round(temperatura_extremidade,2)}K'
+        st.table(df)
+
+        fig = go.Figure()
+        st.markdown('##### Perfil da temperatura:')
+        for ncondicao, condicao in enumerate(dicionario_resultados):
+            theta = dicionario_resultados[condicao]['theta']
             fig.add_trace(go.Line(
                 x = self.x,
                 y = theta * self.temperatura_base,
                 name=dicionario_resultados[condicao]['titulo']
             ))
+            
+        fig.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            autosize=True,
+            yaxis_title="θ [K]",
+            xaxis_title="L [m]",
+            legend_title="Condição na extremidade:")    
 
-            fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                autosize=True)
-        
         st.plotly_chart(fig)
+        
 
     def mostrar_parametros_escolhidos(self):
         _cols = st.columns(4)
@@ -206,6 +251,7 @@ class AletasApp:
             st.latex(r'''A_b='''+ rf'''{round(self.area_b,2)} m^2''')
 
     def mostrar_info(self, infos):
+
         with st.expander(f'📝 Base teórica: {self.condicao_escolhida}', expanded=False):
 
             st.markdown('Sendo:')
