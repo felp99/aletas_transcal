@@ -32,6 +32,7 @@ class AletasApp:
                                       'Adiabática', 
                                       'Temperatura prescrita', 
                                       'Aleta infinita']
+        self.formatos_aleta = ['Retangular', 'Pino']
         self.template_contexto = {
             'theta':None,
             'qa':None,
@@ -47,29 +48,50 @@ class AletasApp:
         self.condicao_escolhida = st.selectbox(label='Condição na extremidade:',
                                         options=self.condicoes_extremidade)
 
+        self.formato_aleta = st.selectbox(label='Forma da aleta:',
+                                          options=self.formatos_aleta)
+
         st.markdown('___')
+
+        self.temperatura_infinito = st.number_input('Temperatura no infinito [K]', 
+                                                value=self.retornar_aleatorio(28.0,100),
+                                                step=10.0)
 
         self.temperatura_base = st.number_input('Temperatura na base [K]', 
                                                 value=self.retornar_aleatorio(100.0,100),
                                                 step=10.0)
-        self.temperatura_prescrita_escolhida = st.number_input(label='Temperatura prescrita [K]', 
-                                                                value=self.retornar_aleatorio(100.0,100),
-                                                                step=.01)
-        self.L = st.number_input(label='Tamanho da aleta [m]', 
+
+        self.temperatura_extremidade = st.number_input(label='Temperatura na extremidade [K]', 
+                                                        value=self.retornar_aleatorio(40.0,100),
+                                                        step=10.)
+
+        self.L = st.number_input(label='Comprimento da aleta [m]', 
                                        value=self.retornar_aleatorio(1.0,1),
                                        step=.01)
+
+        if self.formato_aleta == self.formatos_aleta[0]:
+
+            self.w = st.number_input(label='Largura [m]', 
+                                        value=self.retornar_aleatorio(1.0,1),
+                                        step=.01)
+
+            self.t = st.number_input(label='Altura [m]', 
+                                        value=self.retornar_aleatorio(1.0,1),
+                                        step=.01)
+        else:
+
+            self.raio = st.number_input(label='Raio [m]', 
+                                        value=self.retornar_aleatorio(.9,1),
+                                        step=.01)
+
         self.k = st.number_input(label='Coef. condução [W/mK]', 
                                  value = self.retornar_aleatorio(100.0,1000),
                                  step=10.)
+
         self.h = st.number_input(label='Coef. convecção [W/m²K]', 
                                  value = self.retornar_aleatorio(100.0,1000),
                                  step=10.)
-        self.P =  st.number_input(label='Perímetro [m]', 
-                                  value = self.retornar_aleatorio(0.5,1),
-                                  step=.1)
-        self.area_b = st.number_input(label='Área da base [m²]', 
-                                      value= self.retornar_aleatorio(0.5,1),
-                                      step=.1)
+
 
     def conteudo(self):
         st.markdown(self.titulo_pagina)
@@ -108,15 +130,25 @@ class AletasApp:
             st.caption(f'👨🏻‍💻 Código fonte: https://github.com/felp99/aletas_transcal')
 
     def geral(self):
+        if self.formato_aleta == self.formatos_aleta[0]:
+            self.area_b = self.w * self.t
+            self.P = (self.w * 2) + (self.t * 2)
+            self.area_s = (self.w * self.t) + self.L * ((self.w * self.L) * 2) + ((self.L * self.t)*2)
+        elif self.formato_aleta == self.formatos_aleta[1]:
+            self.area_b = np.pi * self.raio **2
+            self.P = (self.raio * 2) * np.pi
+            self.area_s = np.pi * self.raio * 2 * self.L
+        self.theta_b = self.temperatura_base - self.temperatura_infinito
+        self.theta_L = self.temperatura_extremidade - self.temperatura_infinito
         self.m = np.sqrt(self.h * self.P / self.k * self.area_b)
         self.x = np.linspace(start = 0, stop = self.L, num=100)
         self.M = np.sqrt(self.h * self.P * self.k * self.area_b) * self.temperatura_base
 
     def eficiencia_calc(self, qa):
-        return qa/(self.h * self.P * self.L * self.temperatura_base)
+        return qa/(self.h * self.area_b * self.theta_b)
 
     def efetividade_calc(self, qa):
-        return qa/(self.h*self.temperatura_base*self.area_b)
+        return qa/(self.h * self.area_s * self.theta_b)
 
     def trans_conv(self):
 
@@ -160,13 +192,13 @@ class AletasApp:
     def temperatura_prescrita(self):
 
         self.temperatura_prescrita_info = {
-                'Na extremidade:': r'''\theta_L=\theta\left(L\right)''' + rf'''= {round(self.temperatura_prescrita_escolhida, 2)} K''',
+                'Na extremidade:': r'''\theta_L=\theta\left(L\right)''' + rf'''= {round(self.theta_L, 2)} K''',
                 'Distribuição da temperatura:': r'''\frac{\theta}{\theta_b}=\frac{\left(\frac{\theta_L}{\theta_b}\right)sinh\ (mx)\ +\ sinh\ m(L-x)}{sinh\ (mL)}''',
                 'Taxa de transferência de calor na aleta:': r'''q_a=M\frac{\left(cosh\ mL\ -\ \frac{\theta_L}{\theta_b}\right)}{sinh\ mL}''',
             }
 
-        theta = ((self.temperatura_prescrita_escolhida/self.temperatura_base)*np.sinh(self.m*self.x)) + np.sinh(self.m*(self.L-self.x))/np.sinh(self.m*self.L)
-        qa =  self.M * (np.cosh(self.m*self.L)-(self.temperatura_prescrita_escolhida/self.temperatura_base))/np.sinh(self.m*self.L)
+        theta = ((self.theta_L/self.theta_b)*np.sinh(self.m*self.x)) + np.sinh(self.m*(self.L-self.x))/np.sinh(self.m*self.L)
+        qa =  self.M * (np.cosh(self.m*self.L)-(self.theta_L/self.theta_b))/np.sinh(self.m*self.L)
 
         context = {}
         context['theta'] = theta
@@ -213,9 +245,12 @@ class AletasApp:
             theta = dicionario_resultados[condicao]['theta']
             qa = dicionario_resultados[condicao]['qa']
             eficiencia = dicionario_resultados[condicao]['eficiencia']
+            efetividade = dicionario_resultados[condicao]['efetividade']
 
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa,2)} W'
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa/1000,2)} kW'
             df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
+
         st.table(df)
 
         fig = go.Figure()
@@ -224,7 +259,7 @@ class AletasApp:
             theta = dicionario_resultados[condicao]['theta']
             fig.add_trace(go.Line(
                 x = self.x,
-                y = theta * self.temperatura_base,
+                y = theta * self.theta_b,
                 name=dicionario_resultados[condicao]['titulo'],
             ))
             
@@ -242,7 +277,7 @@ class AletasApp:
     def mostrar_parametros_escolhidos(self):
         _cols = st.columns(4)
         with _cols[0]:
-            st.latex(r'''\theta_b='''+ rf'''{round(self.temperatura_base, 2)} K''')
+            st.latex(r'''\theta_b='''+ rf'''{round(self.theta_b, 2)} K''')
         with _cols[1]:
             st.latex(r'''L='''+ rf'''{round(self.L, 2)} m''')
         with _cols[2]:
