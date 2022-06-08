@@ -163,7 +163,7 @@ class AletasApp:
 
         theta = (np.cosh(self.m * (self.L-self.x)) + ((self.h/(self.m*self.k)) * np.sinh(self.m*(self.L-self.x))))/(np.cosh(self.m * self.L) + ((self.h/(self.m*self.k)) * np.sinh(self.m*self.L)))
         qa =  self.M * ((np.sinh(self.m*self.L)+((self.h/(self.m*self.k))* np.cosh(self.m * self.L)))/(np.cosh(self.m*self.L)+((self.h/(self.m*self.k))* np.sinh(self.m * self.L))))
-        st.write(qa)
+
         context = {}
         context['theta'] = theta
         context['qa']  = qa
