@@ -106,9 +106,7 @@ class AletasApp:
                        Na barra lateral, escolha diferentes **condições na extremidade da aleta** para analisar sua **base teórica**.
                        Escolha também **diferentes parâmetros** que serão utilizados para o cálculo dos **perfis de temperatura
                        e taxa de transferência de calor**.''')
-
         
-
         self.trans_conv()
         self.adiabatica()
         self.temperatura_prescrita()
@@ -138,7 +136,7 @@ class AletasApp:
         if self.formato_aleta == self.formatos_aleta[0]:
             self.area_b = self.w * self.t
             self.P = (self.w * 2) + (self.t * 2)
-            self.area_s = (self.w * self.t) + ((self.w * self.L) * 2) + ((self.L * self.t)*2)
+            self.area_s = self.L * self.P
         elif self.formato_aleta == self.formatos_aleta[1]:
             self.area_b = np.pi * self.raio **2
             self.P = (self.raio * 2) * np.pi
@@ -150,10 +148,10 @@ class AletasApp:
         self.M = np.sqrt(self.h * self.P * self.k * self.area_b) * self.temperatura_base
 
     def eficiencia_calc(self, qa):
-        return qa/(self.h * self.area_b * self.theta_b)
+        return qa/(self.h * self.area_s * self.theta_b)
 
     def efetividade_calc(self, qa):
-        return qa/(self.h * self.area_s * self.theta_b)
+        return qa/(self.h * self.area_b * self.theta_b)
 
     def trans_conv(self):
 
@@ -165,7 +163,7 @@ class AletasApp:
 
         theta = (np.cosh(self.m * (self.L-self.x)) + ((self.h/(self.m*self.k)) * np.sinh(self.m*(self.L-self.x))))/(np.cosh(self.m * self.L) + ((self.h/(self.m*self.k)) * np.sinh(self.m*self.L)))
         qa =  self.M * ((np.sinh(self.m*self.L)+((self.h/(self.m*self.k))* np.cosh(self.m * self.L)))/(np.cosh(self.m*self.L)+((self.h/(self.m*self.k))* np.sinh(self.m * self.L))))
-        
+        st.write(qa)
         context = {}
         context['theta'] = theta
         context['qa']  = qa
@@ -254,8 +252,8 @@ class AletasApp:
             efetividade = dicionario_resultados[condicao]['efetividade']
 
             df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa,2)} W'
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia/100
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade/100
 
         st.table(df)
 
@@ -292,11 +290,13 @@ class AletasApp:
         with _cols[3]:
             st.latex(r'''h='''+ rf'''{round(self.h, 2)} '''+ r'''\frac{h}{m^2k}''')
 
-        _cols = st.columns(2)
+        _cols = st.columns(3)
         with _cols[0]:
-            st.latex(r'''P='''+ rf'''{round(self.P,2)} m''')
+            st.latex(r'''P\simeq'''+ rf'''{round(self.P,2)} m''')
         with _cols[1]:
-            st.latex(r'''A_b='''+ rf'''{round(self.area_b,2)} m^2''')
+            st.latex(r'''A_b\simeq'''+ rf'''{round(self.area_b,4)} m^2''')
+        with _cols[2]:
+            st.latex(r'''A_s\simeq'''+ rf'''{round(self.area_s,4)} m^2''')
 
     def mostrar_info(self, infos):
 
