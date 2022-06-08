@@ -252,8 +252,8 @@ class AletasApp:
             efetividade = dicionario_resultados[condicao]['efetividade']
 
             df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa,2)} W'
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia/100
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade/100
 
         st.table(df)
 
