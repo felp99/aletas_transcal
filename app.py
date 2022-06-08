@@ -66,9 +66,10 @@ class AletasApp:
                                                 value=self.retornar_aleatorio(373.,100),
                                                 step=10.0)
 
-        self.temperatura_extremidade = st.number_input(label='Temperatura na extremidade [K]', 
-                                                        value=self.retornar_aleatorio(358.0,100),
-                                                        step=10.)
+
+        self.temperatura_extremidade = st.slider(label='Temperatura na extremidade [K]', 
+                                                 min_value=self.temperatura_base-10, 
+                                                 max_value=self.temperatura_base+12)                  
 
         self.L = st.number_input(label='Comprimento da aleta (L) [mm]', 
                                        value=self.retornar_aleatorio(24.,100),
@@ -245,8 +246,6 @@ class AletasApp:
             'temperatura_prescrita':self.temperatura_prescrita_resultado,
             'aleta_infinita':self.aleta_infinita_resultado,
         }
-
-        st.json(dicionario_resultados)
 
         for ncondicao, condicao in enumerate(dicionario_resultados):
             theta = dicionario_resultados[condicao]['theta']
