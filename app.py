@@ -32,7 +32,7 @@ class AletasApp:
                                       'Adiabática', 
                                       'Temperatura prescrita', 
                                       'Aleta infinita']
-        self.formatos_aleta = ['Retangular', 'Pino']
+        self.formatos_aleta = ['Plana Retangular', 'Pino Retangular']
         self.template_contexto = {
             'theta':None,
             'qa':None,
@@ -71,17 +71,17 @@ class AletasApp:
                                                         step=10.)
 
         self.L = st.number_input(label='Comprimento da aleta (L) [mm]', 
-                                       value=self.retornar_aleatorio(100.,100),
+                                       value=self.retornar_aleatorio(28.,100),
                                        step=10.)/1000
 
         if self.formato_aleta == self.formatos_aleta[0]:
 
             self.w = st.number_input(label='Largura (w) [mm]', 
-                                        value=self.retornar_aleatorio(69.,100),
+                                        value=self.retornar_aleatorio(100.,100),
                                         step=10.)/1000
 
             self.t = st.number_input(label='Altura (t) [mm]', 
-                                        value=self.retornar_aleatorio(28.,100),
+                                        value=self.retornar_aleatorio(3.,100),
                                         step=10.)/1000
         else:
 
@@ -138,7 +138,7 @@ class AletasApp:
         if self.formato_aleta == self.formatos_aleta[0]:
             self.area_b = self.w * self.t
             self.P = (self.w * 2) + (self.t * 2)
-            self.area_s = (self.w * self.t) + self.L * ((self.w * self.L) * 2) + ((self.L * self.t)*2)
+            self.area_s = (self.w * self.t) + ((self.w * self.L) * 2) + ((self.L * self.t)*2)
         elif self.formato_aleta == self.formatos_aleta[1]:
             self.area_b = np.pi * self.raio **2
             self.P = (self.raio * 2) * np.pi
