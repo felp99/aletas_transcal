@@ -54,42 +54,42 @@ class AletasApp:
         st.markdown('___')
 
         self.temperatura_infinito = st.number_input('Temperatura no infinito [K]', 
-                                                value=self.retornar_aleatorio(28.0,100),
+                                                value=self.retornar_aleatorio(25.0 + 275.15,100),
                                                 step=10.0)
 
         self.temperatura_base = st.number_input('Temperatura na base [K]', 
-                                                value=self.retornar_aleatorio(100.0,100),
+                                                value=self.retornar_aleatorio(273.15+85.0,100),
                                                 step=10.0)
 
         self.temperatura_extremidade = st.number_input(label='Temperatura na extremidade [K]', 
-                                                        value=self.retornar_aleatorio(40.0,100),
+                                                        value=self.retornar_aleatorio(358.0,100),
                                                         step=10.)
 
-        self.L = st.number_input(label='Comprimento da aleta [m]', 
-                                       value=self.retornar_aleatorio(1.0,1),
-                                       step=.01)
+        self.L = st.number_input(label='Comprimento da aleta [mm]', 
+                                       value=self.retornar_aleatorio(100.,100),
+                                       step=10.)/1000
 
         if self.formato_aleta == self.formatos_aleta[0]:
 
-            self.w = st.number_input(label='Largura [m]', 
-                                        value=self.retornar_aleatorio(1.0,1),
-                                        step=.01)
+            self.w = st.number_input(label='Largura [mm]', 
+                                        value=self.retornar_aleatorio(69.,100),
+                                        step=10.)/1000
 
-            self.t = st.number_input(label='Altura [m]', 
-                                        value=self.retornar_aleatorio(1.0,1),
-                                        step=.01)
+            self.t = st.number_input(label='Altura [mm]', 
+                                        value=self.retornar_aleatorio(28.,100),
+                                        step=10.)/1000
         else:
 
-            self.raio = st.number_input(label='Raio [m]', 
-                                        value=self.retornar_aleatorio(.9,1),
-                                        step=.01)
+            self.raio = st.number_input(label='Raio [mm]', 
+                                        value=self.retornar_aleatorio(100.,100),
+                                        step=10.)/1000
 
         self.k = st.number_input(label='Coef. condução [W/mK]', 
-                                 value = self.retornar_aleatorio(100.0,1000),
+                                 value = self.retornar_aleatorio(237.0,1000),
                                  step=10.)
 
         self.h = st.number_input(label='Coef. convecção [W/m²K]', 
-                                 value = self.retornar_aleatorio(100.0,1000),
+                                 value = self.retornar_aleatorio(25.0,1000),
                                  step=10.)
 
 
@@ -229,50 +229,60 @@ class AletasApp:
 
     def plotar_resultados(self):
 
-        dicionario_resultados = {
-            'trans_conv':self.trans_conv_resultado,
-            'adiabatica':self.adiabatica_resultado,
-            'temperatura_prescrita':self.temperatura_prescrita_resultado,
-            'aleta_infinita':self.aleta_infinita_resultado,
-        }
-
+        dicionario_resultados = {}
         df = pd.DataFrame()
         
+        st.markdown('___')
         st.markdown('### Resultados:')
         st.markdown('##### Comparação dos resultados:')
-        _colunas_metricas = st.columns(4)
-        for ncondicao, condicao in enumerate(dicionario_resultados):
-            theta = dicionario_resultados[condicao]['theta']
-            qa = dicionario_resultados[condicao]['qa']
-            eficiencia = dicionario_resultados[condicao]['eficiencia']
-            efetividade = dicionario_resultados[condicao]['efetividade']
 
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa/1000,2)} kW'
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
+        condicoes_lista = st.multiselect('Selecione as condições a serem analisadas:', options = self.condicoes_extremidade)
 
-        st.table(df)
+        if self.condicoes_extremidade[0] in condicoes_lista:
+            dicionario_resultados['trans_conv'] = self.trans_conv_resultado
+        if self.condicoes_extremidade[1] in condicoes_lista:
+            dicionario_resultados['adiabatica'] = self.adiabatica_resultado
+        if self.condicoes_extremidade[2] in condicoes_lista:
+            dicionario_resultados['temperatura_prescrita'] = self.temperatura_prescrita_resultado
+        if self.condicoes_extremidade[3] in condicoes_lista:
+            dicionario_resultados['aleta_infinita'] = self.aleta_infinita_resultado
 
-        fig = go.Figure()
-        st.markdown('##### Perfil da temperatura:')
-        for ncondicao, condicao in enumerate(dicionario_resultados):
-            theta = dicionario_resultados[condicao]['theta']
-            fig.add_trace(go.Line(
-                x = self.x,
-                y = theta * self.theta_b,
-                name=dicionario_resultados[condicao]['titulo'],
-            ))
-            
-        fig.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            autosize=True,
-            yaxis_title="θ [K]",
-            xaxis_title="L [m]",
-            legend_title="Condição na extremidade:", 
-            hovermode=f"x")    
+        if condicoes_lista == []:
+            st.warning('Selecione ao menos uma condição.')
+        else:
+            for ncondicao, condicao in enumerate(dicionario_resultados):
+                theta = dicionario_resultados[condicao]['theta']
+                qa = dicionario_resultados[condicao]['qa']
+                eficiencia = dicionario_resultados[condicao]['eficiencia']
+                efetividade = dicionario_resultados[condicao]['efetividade']
 
-        st.plotly_chart(fig)        
+                df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa/1000,2)} kW'
+                df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
+                df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
+
+            st.table(df)
+
+            fig = go.Figure()
+            st.markdown('##### Perfil da temperatura:')
+            for ncondicao, condicao in enumerate(dicionario_resultados):
+                theta = dicionario_resultados[condicao]['theta']
+                fig.add_trace(go.Line(
+                    x = self.x,
+                    y = theta * self.theta_b,
+                    name=dicionario_resultados[condicao]['titulo'],
+                ))
+                
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                autosize=True,
+                yaxis_title="θ [K]",
+                xaxis_title="L [m]",
+                legend_title="Condição na extremidade:", 
+                hovermode=f"x")    
+
+            st.plotly_chart(fig)
+            st.markdown('___')
 
     def mostrar_parametros_escolhidos(self):
         _cols = st.columns(4)
