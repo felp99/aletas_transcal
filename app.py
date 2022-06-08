@@ -39,7 +39,7 @@ class AletasApp:
         }
 
         self.formulas_origem = [r'''m^2\equiv\frac{hP}{kA_c},''', 
-                                r'''M\equiv\sqrt{hPkA_c\theta_b},''',
+                                r'''M\equiv\sqrt{hPkA_c}\theta_b,''',
                                 r'''\theta\equiv T-T_\infty,''',
                                 r'''\theta_b=\theta(0)=T_b-T_\infty''']
 
@@ -59,11 +59,11 @@ class AletasApp:
         st.markdown('___')
 
         self.temperatura_infinito = st.number_input('Temperatura no infinito [K]', 
-                                                value=self.retornar_aleatorio(25.0 + 275.15,100),
+                                                value=self.retornar_aleatorio(303.,100),
                                                 step=10.0)
 
         self.temperatura_base = st.number_input('Temperatura na base [K]', 
-                                                value=self.retornar_aleatorio(273.15+85.0,100),
+                                                value=self.retornar_aleatorio(373.,100),
                                                 step=10.0)
 
         self.temperatura_extremidade = st.number_input(label='Temperatura na extremidade [K]', 
@@ -71,17 +71,17 @@ class AletasApp:
                                                         step=10.)
 
         self.L = st.number_input(label='Comprimento da aleta (L) [mm]', 
-                                       value=self.retornar_aleatorio(28.,100),
+                                       value=self.retornar_aleatorio(24.,100),
                                        step=10.)/1000
 
         if self.formato_aleta == self.formatos_aleta[0]:
 
             self.w = st.number_input(label='Largura (w) [mm]', 
-                                        value=self.retornar_aleatorio(100.,100),
+                                        value=self.retornar_aleatorio(60.,100),
                                         step=10.)/1000
 
             self.t = st.number_input(label='Altura (t) [mm]', 
-                                        value=self.retornar_aleatorio(3.,100),
+                                        value=self.retornar_aleatorio(4.,100),
                                         step=10.)/1000
         else:
 
@@ -90,11 +90,11 @@ class AletasApp:
                                         step=10.)/1000
 
         self.k = st.number_input(label='Coef. condução [W/mK]', 
-                                 value = self.retornar_aleatorio(237.0,1000),
+                                 value = self.retornar_aleatorio(50.0,1000),
                                  step=10.)
 
         self.h = st.number_input(label='Coef. convecção [W/m²K]', 
-                                 value = self.retornar_aleatorio(25.0,1000),
+                                 value = self.retornar_aleatorio(50.0,1000),
                                  step=10.)
 
 
@@ -145,7 +145,7 @@ class AletasApp:
         self.theta_L = self.temperatura_extremidade - self.temperatura_infinito
         self.m = np.sqrt((self.h * self.P) / (self.k * self.area_b))
         self.x = np.linspace(start = 0, stop = self.L, num=100)
-        self.M = np.sqrt(self.h * self.P * self.k * self.area_b) * self.temperatura_base
+        self.M = np.sqrt(self.h * self.P * self.k * self.area_b) * self.theta_b
 
     def eficiencia_calc(self, qa):
         return qa/(self.h * self.area_s * self.theta_b)
@@ -162,14 +162,15 @@ class AletasApp:
             }
 
         theta = (np.cosh(self.m * (self.L-self.x)) + ((self.h/(self.m*self.k)) * np.sinh(self.m*(self.L-self.x))))/(np.cosh(self.m * self.L) + ((self.h/(self.m*self.k)) * np.sinh(self.m*self.L)))
-        qa =  self.M * ((np.sinh(self.m*self.L)+((self.h/(self.m*self.k))* np.cosh(self.m * self.L)))/(np.cosh(self.m*self.L)+((self.h/(self.m*self.k))* np.sinh(self.m * self.L))))
+        
+        qa_conv =  self.M * ((np.sinh(self.m * self.L)+((self.h/(self.m*self.k))* np.cosh(self.m * self.L)))/(np.cosh(self.m*self.L)+((self.h/(self.m*self.k))* np.sinh(self.m * self.L))))
 
         context = {}
         context['theta'] = theta
-        context['qa']  = qa
+        context['qa']  = qa_conv
         context['titulo'] = self.condicoes_extremidade[0]
-        context['eficiencia'] = self.eficiencia_calc(qa)
-        context['efetividade'] = self.efetividade_calc(qa)
+        context['eficiencia'] = self.eficiencia_calc(qa_conv)
+        context['efetividade'] = self.efetividade_calc(qa_conv)
         self.trans_conv_resultado =  context
 
     def adiabatica(self):
@@ -181,14 +182,14 @@ class AletasApp:
             }
 
         theta = np.cosh(self.m * (self.L-self.x))/np.cosh(self.m*self.L)
-        qa =  self.M * np.tanh(self.m*self.L)
+        qa_adiabatica =  self.M * np.tanh(self.m*self.L)
 
         context = {}
         context['theta'] = theta
-        context['qa']  = qa
+        context['qa']  = qa_adiabatica
         context['titulo'] = self.condicoes_extremidade[1]
-        context['eficiencia'] = self.eficiencia_calc(qa)
-        context['efetividade'] = self.efetividade_calc(qa)
+        context['eficiencia'] = self.eficiencia_calc(qa_adiabatica)
+        context['efetividade'] = self.efetividade_calc(qa_adiabatica)
         self.adiabatica_resultado = context
 
     def temperatura_prescrita(self):
@@ -200,14 +201,14 @@ class AletasApp:
             }
 
         theta = ((self.theta_L/self.theta_b)*np.sinh(self.m*self.x)) + np.sinh(self.m*(self.L-self.x))/np.sinh(self.m*self.L)
-        qa =  self.M * (np.cosh(self.m*self.L)-(self.theta_L/self.theta_b))/np.sinh(self.m*self.L)
+        qa_temp_prescrita =  self.M * (np.cosh(self.m*self.L)-(self.theta_L/self.theta_b))/np.sinh(self.m*self.L)
 
         context = {}
         context['theta'] = theta
-        context['qa']  = qa
+        context['qa']  = qa_temp_prescrita
         context['titulo'] = self.condicoes_extremidade[2]
-        context['eficiencia'] = self.eficiencia_calc(qa)
-        context['efetividade'] = self.efetividade_calc(qa)
+        context['eficiencia'] = self.eficiencia_calc(qa_temp_prescrita)
+        context['efetividade'] = self.efetividade_calc(qa_temp_prescrita)
         self.temperatura_prescrita_resultado = context
 
 
@@ -219,14 +220,14 @@ class AletasApp:
                 'Taxa de transferência de calor na aleta:': r'''q_a=M''',
             }
         theta = np.exp(-self.m * self.x)
-        qa =  self.M
+        qa_infinita =  self.M
 
         context = {}
         context['theta'] = theta
-        context['qa']  = qa
+        context['qa']  = qa_infinita
         context['titulo'] = self.condicoes_extremidade[3]
-        context['eficiencia'] = self.eficiencia_calc(qa)
-        context['efetividade'] = self.efetividade_calc(qa)
+        context['eficiencia'] = 1/(self.m*self.L)
+        context['efetividade'] = self.efetividade_calc(qa_infinita)
         self.aleta_infinita_resultado = context
 
     def plotar_resultados(self):
@@ -245,6 +246,8 @@ class AletasApp:
             'aleta_infinita':self.aleta_infinita_resultado,
         }
 
+        st.json(dicionario_resultados)
+
         for ncondicao, condicao in enumerate(dicionario_resultados):
             theta = dicionario_resultados[condicao]['theta']
             qa = dicionario_resultados[condicao]['qa']
@@ -252,8 +255,8 @@ class AletasApp:
             efetividade = dicionario_resultados[condicao]['efetividade']
 
             df.loc[dicionario_resultados[condicao]['titulo'], 'Taxa'] = f'{round(qa,2)} W'
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia/100
-            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade/100
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Eficiência'] = eficiencia
+            df.loc[dicionario_resultados[condicao]['titulo'], 'Efetividade'] = efetividade
 
         st.table(df)
 
