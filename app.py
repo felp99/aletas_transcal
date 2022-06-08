@@ -51,6 +51,11 @@ class AletasApp:
         self.formato_aleta = st.selectbox(label='Forma da aleta:',
                                           options=self.formatos_aleta)
 
+        if (self.formato_aleta == self.formatos_aleta[0]):
+            st.image("src/aleta_ret.jpg")
+        else:
+            st.image("src/aleta_pino.png")
+
         st.markdown('___')
 
         self.temperatura_infinito = st.number_input('Temperatura no infinito [K]', 
